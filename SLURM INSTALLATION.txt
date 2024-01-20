@@ -1,0 +1,356 @@
+*********************SLURM INSTALLATION STEPS***********************
+
+---------------
+*VM SETUPS*
+---------------
+###MASTER##
+
+8GB RAM
+2 PROCESSORS
+HD 80GB
+OS UBUNTU
+
+###COMPUTE1###
+
+8GB RAM
+2 PROCESSORS
+HD 80GB
+OS UBUNTU
+
+###COMPUTE2###
+
+8GB RAM
+2 PROCESSORS
+HD 80GB
+OS UBUNTU
+
+--------------------------------------------
+
+####SETUP IDEA####
+
+      1) PASSWORDLESS FROM MASTER TO COMPUTE1
+      2) PASSWORDLESS FROM MASTER TO COMPUTE2
+      3) PASSWORDLESS FROM COMPUTE1 TO COMPUTE2
+      4) PASSWORDLESS FROM COMPUTE2 TO COMPUTE1
+      5) PARTITION /HOME --> ADD EXTERNAL HARD DISK --> 100 GB (CONTAINERZIED STORAGE) --> NFS INSTALL... (REBOOT AFTER ADDING EXTERNAL HARD DISK.)
+
+--------------------------------------------
+
+#ON MASTER
+
+hostnamectl set-hostname master.lab
+apt install vim -y
+sudo vi /etc/hosts
+-----------------------------
+192.168.111.171 master.lab
+192.168.111.173 compute1.lab
+192.168.111.172 compute2.lab
+-----------------------------
+
+#ON COMPUTE1
+
+hostnamectl set-hostname compute2.lab
+apt install vim -y
+sudo vi /etc/hosts
+-----------------------------
+192.168.111.171 master.lab
+192.168.111.173 compute1.lab
+192.168.111.172 compute2.lab
+-----------------------------
+
+#ON COMPUTE2
+
+hostnamectl set-hostname compute2.lab
+apt install vim -y
+sudo vi /etc/hosts
+-----------------------------
+192.168.111.171 master.lab
+192.168.111.173 compute1.lab
+192.168.111.172 compute2.lab
+-----------------------------
+
+#following commands on "MASTER", "COMPUTE1", "COMPUTE2" 
+
+sudo apt update -y 
+sudo apt install openssh-server -y 
+sudo systemctl start sshd
+sudo systemctl enable sshd
+sudo systemctl status sshd
+
+NOTE: IN UBUNTU TO LOGIN AS ROOT
+-> sudo passwd root
+-> su - (you will login as root)
+
+#ON MASTER
+
+sudo -sH
+ssh-keygen -t rsa
+cd .ssh/
+ls
+whoami
+ls -l
+
+#ON COMPUTE1
+
+sudo -sH
+ssh-keygen -t rsa
+cd .ssh/
+
+#MASTER
+vi id_rsa.pub  (copy key)
+
+#ON COMPUTE1
+vi authorized_keys  (paste master's public key)
+
+#ON COMPUTE1
+sudo -sH
+ssh-keygen -t rsa
+cd .ssh/
+vi authorized_keys  (paste master's public key)
+vi authorized_keys  (paste "compute2's" public key)
+
+#ON COMPUTE2
+vi authorized_keys  (paste "compute1's" public key)
+
+#Test:
+on compute1: ssh <ip of compute2>
+on compute2: ssh <ip of compute1>
+
+#MASTER
+
+ssh compute1.lab "apt update -y"
+ssh compute2.lab "apt update -y"
+
+#ON MASTER
+
+#TASK: ADD EXTERNAL HARD DISK 
+--> NEXT -> NEXT -> 100GB -> NEXT -> THEN REBOOT
+
+lsblk (o/p : sdb 100GB disk)
+fdisk /dev/sdb
+-m
+-g
+-n <enter> <enter> <enter> <enter>
+-w
+mkfs.ext4 /dev/sdb1 or mkfs -t ext /dev/sdb1
+mkdir \nfs && echo $?
+mount /dev/sdb1 /nfs && echo $?
+df -h
+
+apt install open-vm-tools (for large screeen)
+
+apt install nfs-kernel-server -y
+ssh compute1.lab "apt install nfs-common"
+ssh compute2.lab "apt install nfs-common"
+
+vi /etc/exports
+---------------------
+/nfs <ip of compute1> (rw,sync,no_root_squash,no_subtree_check)
+/nfs <ip of compute2> (rw,sync,no_root_squash,no_subtree_check)
+----------------------
+exportfs -avr
+
+# ON COMPUT1 AND COMPUTE2
+showmout -e <ip of master>
+
+#ON MASTER
+ssh compute1.lab "mkdir /nfs"
+ssh compute2.lab "mkdir /nfs"
+ssh compute1.lab "mount -t nfs <ip of master>:/nfs /nfs"
+ssh compute2.lab "mount -t nfs <ip of master>:/nfs /nfs"
+ssh compute1.lab "echo '<ip of master>:/nfs /nfs nfs defaults 0 0' | sudo tee /etc/fstab"
+ssh compute2.lab "echo '<ip of master>:/nfs /nfs nfs defaults 0 0' | sudo tee /etc/fstab"
+
+#MASTER, COMPUTE1, COMPUTE2
+groupadd -g 10001 rma
+useradd -m -d /nfs/hpcsa1 -u 10001 -s /bin/bash hpcsa1
+---------------
+#TASK : 
+(on compute 1)
+
+su -hpcsa1
+pwd
+touch kingtatha
+
+(now go on compute2)
+su -hpcsa1
+ls (here you will see "kingtatha" file)
+
+(on master)
+su -hpcsa1
+ls (here you will see "kingtatha" file)
+---------------
+Note : to change password of hpcsa1 user: 
+firstly login as root 
+
+passwd hpcsa1 (and change the password...)
+
+# ON MASTER
+
+su -hpcsa1
+ssh-keygen -t rsa
+cp .ssh/id_rsa.pub .ssh/authorized_keys
+chmod 600 .ssh/authorized_keys
+
+----------------------------------------------------------------------------------------------
+*SLURM INSTALLATION
+<search on google : "slurm documentation"> -> installing -> download -> click on first link -> older version (last at the page) -> (slurm-21.08.8-2.tar.bz2) right click and copy link
+
+#MASTER, COMPUTE1, COMPUTE2
+
+cd /opt/
+apt install wget
+wget <paste link of "slurm-21.08.8-2.tar.bz2">
+tar -xjvf slurm-21.08.8-2.tar.bz2
+apt update -y
+
+# ON MASTER
+apt install -y build-essential munge libmunge-dev libmunge2 libmysqlclient-dev libpam0g-dev libnuma-dev perl
+
+#ON COMPUTE1, COMPUTE2 
+apt install -y build-essential munge libmunge-dev libmunge2
+
+#MASTER , COMPUTE1, COMPUTE2
+cd slurm-21.08.8
+ls
+./configure --prefix=/opt/slurm-21.08.8
+make
+make install
+
+#ON MASTER
+munge --version
+chown munge /etc/munge/munge.key
+scp -r /etc/munge/munge.key compute1.lab:/etc/munge/
+scp -r /etc/munge/munge.key compute2.lab:/etc/munge/
+chown -R munge: /etc/munge /var/log/munge/
+chmod 0700 /etc/munge /var/log/munge/
+systemctl enable munge
+systemctl start munge
+systemctl status munge
+
+ssh compute1.lab "chown -R munge: /etc/munge /var/log/munge/"
+ssh compute1.lab "chmod 0700 /etc/munge /var/log/munge/"
+ssh compute1.lab "systemctl enable munge"
+ssh compute1.lab "systemctl start munge"
+ssh compute1.lab "systemctl status munge"
+
+ssh compute2.lab "chown -R munge: /etc/munge /var/log/munge/"
+ssh compute2.lab "chmod 0700 /etc/munge /var/log/munge/"
+ssh compute2.lab "systemctl enable munge"
+ssh compute2.lab "systemctl start munge"
+ssh compute2.lab "systemctl status munge"
+
+# ON MASTER
+cd /opt/slurm-21.08.8/etc
+cp slurm.conf.example slurm.conf
+vi slurm.conf
+--------------------
+ClusterName=cluster
+SlurmctldHost=master.lab
+
+#at last line
+# COMPUTE NODES
+NodeName=master.lab,compute1.lab,compute2.lab CPUs=1 State=UNKNOWN
+--------------------
+ln -s /opt/slurm-21.08.8/etc/slurmctld.service /usr/lib/systemd/system/slurmctld.service 
+ln -s /opt/slurm-21.08.8/etc/slurmd.service /usr/lib/systemd/system/slurmd.service 
+systemctl start slurmctld.service
+/opt/slurm-21.08.8/sbin/slurmctld -D (command for ckecking error of "slurmctld.service")
+
+# if error: "Invalid user for slurm user slurm user slurm ignored"-> TO RESOLVE ERR. :- vi slurm.conf & change [slurmuser=slurm]
+
+apt-get install mailutils
+/opt/slurm-21.08.8/sbin/slurmctld -D  (see error's and solve accordingly...)
+systemctl start slurmctld.service
+systemctl status slurmctld.service (it now working..)
+
+nano ~/.bashrc
+-----------------
+export PATH="/opt/slurm-21.08.8/bin:$PATH"
+export PATH="/opt/slurm-21.08.8/sbin:$PATH"
+export LD_LIBRARY_PATH="/opt/slurm-21.08.8/lib:LD_LIBRARY_PATH"
+-----------------
+source ~/.bashrc
+sinfo
+
+#ON MASTER
+scp -r /opt/slurm-21.08.8/etc/slurm.conf compute1.lab:/opt/slurm-21.08.8/etc/
+scp -r /opt/slurm-21.08.8/etc/slurm.conf compute2.lab:/opt/slurm-21.08.8/etc/
+
+#ON MASTER, COMPUTE1, COMPUTE2
+systemctl status slurmd.service (if error)
+cd /opt/slurm-21.08.8/etc/
+ls
+cp cgroup.conf.example cgroup.conf
+
+NOTE: slurmd.service is only for compute nodes...
+
+#ON COMPUTE 1 AND COMPUTE2
+systemctl status slurmd.service
+cp cgroup.conf.example cgroup.conf
+ln -s /opt/slurm-21.08.8/etc/slurmd.service /usr/lib/systemd/system/slurmd.service
+systemctl start slurmd.service
+systemctl status slurmd.service
+nano ~/.bashrc
+-----------------
+export PATH="/opt/slurm-21.08.8/bin:$PATH"
+export PATH="/opt/slurm-21.08.8/sbin:$PATH"
+export LD_LIBRARY_PATH="/opt/slurm-21.08.8/lib:LD_LIBRARY_PATH"
+-----------------
+source ~/.bashrc
+sinfo
+
+#ON MASTER
+cd /opt/slurm-21.08.8/etc/
+scp -r slurm.conf compute1.lab:/opt/slurm-21.08.8/etc/
+scp -r slurm.conf compute2.lab:/opt/slurm-21.08.8/etc/
+ssh compute1.lab "systemctl restart slurmd"
+ssh compute2.lab "systemctl restart slurmd"
+sinfo (showing all nodes are working...) (check on compute1 and compute2 also)
+
+#FOR DATABASE DAEMON
+
+#ON MASTER
+cp slurmdbd.conf.example slurmdbd.conf
+vi slurmdbd.conf
+---------------------
+AuthType=auth/munge
+DbdHost=localhost
+SlurmUser=root
+DebugLevel=verbose
+LogFile=/var/log/slurm/slurmdbd.log
+PidFile=/var/run/slurmdbd.pid
+StorageType=accounting_storage/mysql
+StoragePass=tatha
+StorageUser=root
+--------------------
+
+ln -s /opt/slurm-21.08.8/etc/slurmdbd.service /usr/lib/systemdbd/system/slurmdbd.service
+chmod 600 slurmdbd.conf
+systemctl start slurmdbd.service
+systemctl restart slurmdbd.service
+systemctl status slurmdbd.service 
+
+apt install mariadb-server -y
+mysql (you will login as mysql server)
+
+SHOW DATABASES;
+CREATE DATABASE slurm_acc_db;
+DROP USER 'slurm'@'localhost';
+GRANT ALL PRIVILEGES ON slurm_acc_db.* TO 'slurm'@'localhost';
+SET PASSWORD FOR 'slurm'@'localhost'=PASSWORD('tatha');
+
+---------------------------------------------------------------------------------------------------------------------------------------
+#ON MASTER
+
+df -h
+#if error: not showing /nfs -> (/dev/sdb1 is not mounted ) then
+vi /etc/fstab
+------------------
+#add at last line
+/dev/db1  /nfs  ext4  defaults 0  0 
+-----------------
+reboot
+df -h (now you can see (/dev/sdb1) is mounted..)
+---------------------------------------------------------------------------------------------------------------------------------------
+
