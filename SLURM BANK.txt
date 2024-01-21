@@ -26,7 +26,8 @@ export PATH="/root/slurm-bank-slurm-bank=1.2.1/usr/bin:$PATH"
 -------------------------
 source ~/.bashrc
 apt install sview share
-
+sview
+sshare
 -------------------------------------------------------------------------------------------------------
 
 #PRACTICAL
