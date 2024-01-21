@@ -1,0 +1,14 @@
+### WALLTIME TASK ###
+------------------------------------------------------------------------------
+
+sacctmgr create qos tatha
+sacctmgr modify qos name=tatha hpcsa1 set maxwall=5 flags=denyonlimit
+sacctmgr show qos format=name,maxwall,maxnodes
+
+#TO DELETE QOS 
+sacctmgr delete qos tatha
+
+#SEE QOS DELETED OR NOT...
+sacctmgr show qos format=name,maxwall,maxnodes
+
+------------------------------------------------------------------------------
