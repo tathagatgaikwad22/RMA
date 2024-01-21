@@ -4,7 +4,7 @@
 scontrol update NodeName="compute1.lab" state=DRAIN Reason="health_issues"
 sinfo -R
 
-#TO ONLINE ANT NODE
+#TO ONLINE ANY NODE
 
 scontrol update NodeName="compute1.lab" state=RESUME
 sinfo -R
@@ -92,6 +92,8 @@ sacctmgr add account rmalab-acc
 sacctmgr show accounts
 sacctmgr show associatons
 
+#### TO DELETE A ACCOUNT ###
+sacctmgr delete account name=<account name>
 
 ### task 9 ###
 
