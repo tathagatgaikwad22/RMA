@@ -32,7 +32,7 @@ print ('Power: ', a ** b)
 
 ----------------------------------------------------------------------
 
-* vi pyscript.py --> create script file...
+* vi pyscript.sh --> create script file...
 
 
 #!/bin/bash
