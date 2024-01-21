@@ -1,0 +1,150 @@
+---------------------------------------------------------------------------
+#sreport
+
+# based on cpu
+
+sreport cluster utilization Start=01/01/24:00:00:00 End=20/01/-00:00:00
+
+#based on gpu (not work on vm, it works on supercomputer...)
+
+sreport -t minutes -T gres/gpu -nP cluster AccountUtilizationByUser Start=120123-00:00:00 End=123123-23:59:59
+
+---------------------------------------------------------------------------
+
+#SETUP FOR "OPENMPI"
+
+#Run on master, compute1, compute2
+
+cd /opt
+
+[serch on google: "https://www.open-mpi.org › software" & "openmpi-5.0.1.tar.gz" copy link of this tar file]
+
+wget <paste link here>
+tar -zxvf openmpi-5.0.1.tar.gz
+ls
+cd /opt/openmpi-5.0.1
+ls -lrt
+pwd
+./configure --prefix=/opt/openmpi-5.0.1/
+make all
+make install
+
+vi /opt/openmpi-5.0.1/env.sh 
+-------------------------------------------------------------------
+export PATH="/opt/openmpi-5.0.1/bin:$PATH"
+export PATH="/opt/openmpi-5.0.1/Sbin:$PATH"
+export LD_LIBRARY_PATH="/opt/openmpi-5.0.1/lib:$LD_LIBRARY_PATH"
+-------------------------------------------------------------------
+source /opt/openmpi-5.0.1/env.sh
+which mpirun
+
+----------------------------------------------------------------------------
+
+1] NORMAL MPI TASK...
+
+---> 
+su - tatha  (login as normal user)
+vi mpi.c
+-------------------------------------
+#include <mpi.h>
+#include <stdio.h>
+
+int main(int argc, char** argv) {
+    // Initialize the MPI environment
+    MPI_Init(NULL, NULL);
+
+    // Get the number of processes
+    int world_size;
+    MPI_Comm_size(MPI_COMM_WORLD, &world_size);
+
+    // Get the rank of the process
+    int world_rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
+
+    // Get the name of the processor
+    char processor_name[MPI_MAX_PROCESSOR_NAME];
+    int name_len;
+    MPI_Get_processor_name(processor_name, &name_len);
+
+    // Print off a hello world message
+    printf("Hello world from processor %s, rank %d out of %d processors\n",
+           processor_name, world_rank, world_size);
+
+    // Finalize the MPI environment.
+    MPI_Finalize();
+}
+---------------------------------------
+mpicc mpi.c -o mpi
+ls -ltr
+source /opt/openmpi-5.0.1/env.sh
+mpirun -nP 2 mpi /home/tatha/mpi  [you will see output..]
+
+ERROR:  IF ERROR "mpicc not found"
+sudo apt install mpich
+--------------------------------------
+
+2] BASH MPI TASK...
+
+---->
+(firstly login as hpcsa1 user in all nodes..)
+
+# on master node
+
+su - hpcsa1
+vi mpi.c
+-------------------------------------
+
+#include <mpi.h>
+#include <stdio.h>
+
+int main(int argc, char** argv) {
+    // Initialize the MPI environment
+    MPI_Init(NULL, NULL);
+
+    // Get the number of processes
+    int world_size;
+    MPI_Comm_size(MPI_COMM_WORLD, &world_size);
+
+    // Get the rank of the process
+    int world_rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
+
+    // Get the name of the processor
+    char processor_name[MPI_MAX_PROCESSOR_NAME];
+    int name_len;
+    MPI_Get_processor_name(processor_name, &name_len);
+
+    // Print off a hello world message
+    printf("Hello world from processor %s, rank %d out of %d processors\n",
+           processor_name, world_rank, world_size);
+
+    // Finalize the MPI environment.
+    MPI_Finalize();
+}
+------------------------------------
+
+vi tatha_script.sh
+-----------------------------------
+#!/bin/bash 
+#SBATCH --job-name=mpi1
+#SBATCH --nodes=1
+#SBATCH --error=job%J.err
+#SBATCH --output=job%J.out
+source /nfs/hpcsa1/mpi.c
+cd /nfs/hpcsa1/
+mpirun -np 1 mpiscript
+echo "Hello"
+----------------------------------
+chmod 700 tatha_mpiscript.sh
+sbatch tatha_mpiscript.sh
+scontrol show job (you willl see "job id")
+scontrol show job <job id>
+---------------------------------
+
+
+
+
+
+
+
+
