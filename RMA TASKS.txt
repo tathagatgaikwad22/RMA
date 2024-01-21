@@ -1,0 +1,197 @@
+####TASK 1####
+#TO OFFLINE ANY NODE
+
+scontrol update NodeName="compute1.lab" state=DRAIN Reason="health_issues"
+sinfo -R
+
+#TO ONLINE ANT NODE
+
+scontrol update NodeName="compute1.lab" state=RESUME
+sinfo -R
+
+###TASK 2####
+
+USE SCRIPT TO OFFLINE A COMPUTE1 NODE, AND ONLINE.
+
+vi script.sh
+---------------------------------
+scontrol update NodeName="compute1.lab" state=DRAIN Reason="health_issues"
+scontrol update NodeName="compute1.lab" state=RESUME
+---------------------------------
+chmod 700 script.sh
+./script.sh
+
+###TASK 3####
+
+INTERACTIVE MODE FOR 5 MINUTES FROM MASTER.
+
+srun --nodes=1 --time=00:05:00 --pty /bin/bash      (you will get interactive mode as compute1)
+squeue                                             (you will see job id with other job info.)
+#O/P
+             JOBID PARTITION     NAME     USER ST       TIME  NODES NODELIST(REASON)
+                93     hpcsa     bash     root  R       0:22      1 compute1.lab
+
+#### TASK 4 ###
+
+to kill above job forcefully..
+
+scancel <job id>
+eg. scancel 93
+
+#### TASK 5 ####
+
+CREATE A BASH SCRIPT USING SBATCH.
+
+#ON MASTER
+
+cd /opt/slurm-21.08.8/
+vi tathascript.sh
+------------------
+#!/bin/bash
+#SBATCH --job-name=my-job
+#SBATCH --nodes=1
+#SBATCH --error=job%J.err
+#SBATCH --output=job%J.out
+------------------
+chmod 700 tathascript.sh
+sbatch tathascript.sh  (you can see job id)
+scontrol show job <job-id of newly created job>   :- (you can see all deatails of perticular job)
+
+
+### TASK 6 ###
+
+1) JOB INFORMATION OF A SPECIFIED USER 
+2) STATUS OF JOB AND JOB STEPS, TIME MEANS RUNNING TIME SO FAR INCLUDE LONG
+3) SHOW ALL STATES
+4) ITERATE OUTPUTE EVERY 3 SECONDS
+
+1--> srun --nodes=1 --time=00:20:00 --pty /bin/bash
+     sinfo
+     scontrol show jobs (go on specefic compute nodes and see job info)
+
+2--> squeue -u root
+     squeue -s -l
+
+3--> squeue -t all
+     squeue --states=ALL
+     squeue --states=PD,R
+
+4--> squeue -i 3  (here 3 is in seconds and, output will iterate every 3 seconds)
+
+
+### TASK 7###
+CREATE A CLUSER 
+
+sacctmgr create cluster <cluster-name>
+
+
+### task 8 ###
+ADD ACCOUNT
+
+sacctmgr add account rmalab-acc
+sacctmgr show accounts
+sacctmgr show associatons
+
+
+### task 9 ###
+
+CREATE A USER ACCOUNT
+
+sacctmgr create user name=hpcsa1 DefaultAccount=rmalab-acc (or) echo y | sacctmgr create user name=hpcsa1 DefaultAccount=rmalab-acc
+sacctmgr show associatons or assoc
+
+### TASK 10 ###
+
+IN "hpcsa1" user add two accounts "rmalab-acc" and "demolab-acc" and set "demolab-acc" account as default account for "hpcsa1" user
+
+-->
+sacctmgr add account rmalab-acc
+sacctmgr add account demolab-acc
+sacctmgr create user name=hpcsa1 DefaultAccount=demolab-acc
+sacctmgr show associatons
+sacctmgr show user hpcsa1
+
+#to set default user
+sacttmgr modify user where name=hpcsa1 set DefaultAccount=demolab-acc
+
+
+
+### TASK 11 ###
+
+TO DELETE USER IN "sacctmgr"
+sacctmgr delete user where name=hpcsa1
+
+
+### TASK 12 ###
+NODE RESERVATON.
+
+CREATE/DELETE/MODIFY/VIEW_INFORMATION OF THE RESERVATION.
+
+scontrol show reservation (to see reservation information...)
+scontrol create reservation StartTime=now EndTime=2024-01-29T11:10:00 user=root flags=maint,ignore_jobs nodes=ALL (you will see reservation id)
+scontrol show reservation root_1
+
+#INCREASE TIME BY 30 MINUTES
+
+scontrol update ReservationId=root_1 EndTime=2024-01-29T11:40:00 Reservation=root_1
+
+### TASK 13 ###
+
+TO DELETE A RESERVATION?
+->
+scntrol delete reservation=root_1
+
+
+### TASK 14 ###
+
+ADD RESERVATION ON PARTITION "cdac"?
+->
+scontrol create reservation StartTime=now EndTime=2024-01-29T11:10:00 user=root flags=maint,ignore_jobs nodes=ALL Partition=cdac (reservation created- root_2)
+scontrol show reservation root_2
+
+
+### TASK 15 ###
+
+SHOW FROM "2024-01-01" TO "2024-01-10" HOW MANY JOBS RUN THI PERIOD?
+
+sacct -S 2024-01-01 -E 2024-01-10 -o jobId
+
+### task 16 ###
+MONITORING JOBS
+
+1) sstat -j <job-id>
+2) sacct -j <job-id>
+3) sreport --help
+
+
+### task 17 ###
+
+YOU HAVE "hpcsa1" user, and you want to block that user by using acl (usiing sacctmgr commad)
+
+sacctmgr -i update user where name=hpcsa1 set MaxSubmitJobs=0
+sacctmgr list user hpcsa1 withhaccoc format=user set MaxSubmitJobs=0
+sacctmgr -i update user where name=hpcsa1 set MaxSubmitJobs=10,0000
+sacctmgr list user hpcsa1 withaccoc format=user,MaxSubmitJobs
+
+
+### task 18 ###
+
+SEE WHAT HAS BEEN REQUEST BY "hpcsa1" USER FOR RUNNING JOBS?
+-->
+sacct -u hpcsa1 --format=JobId,JobName,ReqCPUs,ReqMem,ReqNodes,ReqTres
+
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+

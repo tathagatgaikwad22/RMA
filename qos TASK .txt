@@ -1,0 +1,38 @@
+### TASK qos ###
+
+Q. create a qos name hpcsa. so if a user tries to submit a job using 2 nodes, it wil give error.
+-->
+
+vi /opt/slurm-21.08.8/etc/slurm.conf
+----------------------------------------
+add at line at last..
+
+PartitionName=hpcsa Nodes=ALL Default=Yes MaxTime=INFINITE State=UP QOS=hpcsa MaxNodes=1
+----------------------------------------
+systemctl restart slurmctld
+
+vi qos_tatha.sh
+----------------------------------------
+#!/bin/bash
+#SBATCH --job-name=qos
+#SBATCH --nodes=1
+#SBATCH --error=job%J.err
+#SBATCH --output=job%J.out
+echo "Congratulation job is successfully run!!"
+---------------------------------------
+
+chmod 700 qos_tatha.sh
+sbatch --nodes=2 qos_tatha.sh
+squeue  (error: "REASON: PartitionNodeLimit") 
+scontrol show job 2   (2 is job name here...) (status showing "pending")
+---------------------------------------
+
+
+
+
+
+
+
+
+
+

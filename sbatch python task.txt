@@ -1,0 +1,64 @@
+#### TASK  ####
+Python program to preform arithmatic operations and submit it using batch script using SBATCH?
+
+----------------------------------------------------------------------
+cd /nfs/hpcsa1/
+
+* code.py  ---> create one file for pyhthon code....
+
+a = 7
+b = 2
+
+# addition
+print ('Sum: ', a + b)  
+
+# subtraction
+print ('Subtraction: ', a - b)   
+
+# multiplication
+print ('Multiplication: ', a * b)  
+
+# division
+print ('Division: ', a / b) 
+
+# floor division
+print ('Floor Division: ', a // b)
+
+# modulo
+print ('Modulo: ', a % b)  
+
+# a to the power b
+print ('Power: ', a ** b)   
+
+----------------------------------------------------------------------
+
+* vi pyscript.py --> create script file...
+
+
+#!/bin/bash
+
+#SBATCH --job-name=pscript_job
+#SBATCH --nodes=1
+#SBATCH --error=job.%J.err
+#SBATCH --output=job.%J.out
+
+cd /nfs/hpcsa1/
+
+python3 code.py
+-------------------------------------------------------------
+
+chmod 700 code.py
+chmod 700 pscript.sh
+sbatch pscript.sh 
+scontrol show job 17
+
+-------------------------------------------------------------
+
+go on compute node according to "NodeList"
+
+cd /nfs/hpcsa1
+cat <"job.out">   ---> YOU CAN SEE OUTPUT OF "code.py" FILE
+cat <"job.error">
+-------------------------------------------------------------
+
+
